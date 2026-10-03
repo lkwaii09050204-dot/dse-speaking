@@ -13,12 +13,10 @@
         label { display: block; font-weight: 600; margin-bottom: 6px; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         
-        /* 模組切換頁籤 (只留 Writing & Speaking) */
         .tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
         .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; color: #666; font-size: 16px; }
         .tab-btn.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
 
-        /* 錄音區介面 */
         .recorder-box { background: #f8f9fa; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; }
         .btn { padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; font-size: 15px; }
         .btn-primary { background: #1a73e8; color: white; }
@@ -37,6 +35,7 @@
         <select id="loginName">
             <option value="">-- Select Name --</option>
             <option value="Esther">Esther</option>
+            <option value="LKW">LKW</option>
         </select>
     </div>
     <div class="form-group">
@@ -54,7 +53,6 @@
         <button onclick="logout()" style="border:none; background:none; color:#888; cursor:pointer;">Logout</button>
     </div>
 
-    <!-- 只保留 Writing & Speaking 兩個 Tab -->
     <div class="tabs">
         <button id="tabWriting" class="tab-btn active" onclick="switchTab('Writing')">✍️ Writing</button>
         <button id="tabSpeaking" class="tab-btn" onclick="switchTab('Speaking')">🗣️ Speaking</button>
@@ -74,7 +72,7 @@
             <textarea id="studentContent" rows="8" placeholder="Type or paste your essay here..."></textarea>
         </div>
 
-        <!-- Speaking 模式：錄音介面 -->
+        <!-- Speaking 模式：純錄音 (已刪除文字框) -->
         <div id="speakingGroup" class="form-group hidden">
             <label>Audio Recording (1-min Deliberation)</label>
             <div class="recorder-box">
@@ -83,8 +81,6 @@
                 <button type="button" id="stopRecBtn" class="btn btn-primary hidden" onclick="stopRecording()">⏹️ Stop</button>
                 <audio id="audioPreview" controls class="hidden" style="margin-top: 15px; width: 100%;"></audio>
             </div>
-            <label>Notes / Speech Draft (Optional)</label>
-            <textarea id="speakingNotes" rows="3" placeholder="Optional: Paste your response draft or notes here..."></textarea>
         </div>
 
         <button type="submit" id="submitBtn" class="btn btn-success">Submit Practice</button>
@@ -93,12 +89,14 @@
 </div>
 
 <script>
+    // 新增了 LKW 的帳戶資訊
     const STUDENT_DATA = {
-        "Esther": { pin: "98120000", email: "esther_email@example.com" } // 可替換為 Esther 的 Email
+        "Esther": { pin: "98120000", email: "esther_email@example.com" }, // 可隨時更改 Esther 嘅真實電郵
+        "LKW": { pin: "56050000", email: "leungkw@ykh.hk" }
     };
 
-    // ⚠️ 替換為你的 Google Apps Script Web App 網址
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyaELDzORBF4iSxhQe6w-W7v2YNt0_wGd4aWwKgXctx6DdKsRcSiFpvENVcL5417CUr/exec";
+    // ⚠️ 記得將以下網址替換為你最新部署的 Google Apps Script Web App URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhhoK9RAMxRV19v7gyZ9ZfcTxGE1s7MnXYFv8-lnAZO7f35dMflCWCHIwVHKRmDU_b/exec";
 
     let currentUser = null;
     let mediaRecorder = null;
@@ -126,9 +124,9 @@
         currentUser = null;
         document.getElementById('dashboardCard').classList.add('hidden');
         document.getElementById('loginCard').classList.remove('hidden');
+        document.getElementById('submissionForm').reset();
     }
 
-    // 切換 Writing 與 Speaking
     function switchTab(moduleName) {
         document.getElementById('currentModule').value = moduleName;
         
@@ -145,7 +143,6 @@
         }
     }
 
-    // 🎙️ 錄音控制
     async function startRecording() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -181,26 +178,30 @@
         document.getElementById('recordStatus').innerText = "✅ Recording finished. Listen below:";
     }
 
-    // 表單提交
     document.getElementById('submissionForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const submitBtn = document.getElementById('submitBtn');
         const statusDiv = document.getElementById('submitStatus');
         const moduleName = document.getElementById('currentModule').value;
 
+        // 如果是 Speaking 但無錄音，阻擋提交
+        if (moduleName === 'Speaking' && !audioBase64) {
+            alert("請先完成錄音！");
+            return;
+        }
+
         submitBtn.disabled = true;
-        submitBtn.innerText = "Submitting...";
+        submitBtn.innerText = "Submitting & Sending Email...";
         statusDiv.className = "status";
         statusDiv.innerText = "Uploading your practice...";
         statusDiv.classList.remove('hidden');
 
-        // 整理提交數據
         const payload = {
             studentName: currentUser.name,
             studentEmail: currentUser.email,
             module: moduleName,
             question: document.getElementById('taskQuestion').value,
-            studentContent: moduleName === 'Writing' ? document.getElementById('studentContent').value : document.getElementById('speakingNotes').value,
+            studentContent: moduleName === 'Writing' ? document.getElementById('studentContent').value : "Audio submitted (No text notes)",
             audioData: moduleName === 'Speaking' ? audioBase64 : null
         };
 
@@ -214,10 +215,13 @@
             statusDiv.style.background = "#e6f4ea";
             statusDiv.style.color = "#137333";
             statusDiv.innerText = "✅ Submitted successfully! Teacher notified.";
+            
+            // 重置表單
             document.getElementById('submissionForm').reset();
             audioBase64 = null;
             document.getElementById('audioPreview').classList.add('hidden');
             document.getElementById('recordStatus').innerText = 'Click "Start Recording" to begin';
+            
             submitBtn.disabled = false;
             submitBtn.innerText = "Submit Practice";
         })
