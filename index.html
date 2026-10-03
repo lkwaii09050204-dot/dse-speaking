@@ -1,31 +1,44 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DSE English Practice Portal</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-        .card { max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { color: #1a73e8; margin-top: 0; }
-        .hidden { display: none; }
+        .card { max-width: 650px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2, h3 { color: #1a73e8; margin-top: 0; }
+        .hidden { display: none !important; }
         .form-group { margin-bottom: 18px; }
         label { display: block; font-weight: 600; margin-bottom: 6px; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         
+        /* 頁籤 */
         .tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
         .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; color: #666; font-size: 16px; }
         .tab-btn.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
+        .sub-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .sub-tabs button { padding: 8px 12px; border: 1px solid #1a73e8; background: white; color: #1a73e8; border-radius: 6px; cursor: pointer; }
+        .sub-tabs button.active { background: #1a73e8; color: white; }
 
-        .recorder-box { background: #f8f9fa; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; }
-        .btn { padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; font-size: 15px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px 0; font-size: 15px; width: 100%; }
         .btn-primary { background: #1a73e8; color: white; }
+        .btn-secondary { background: #f1f3f4; color: #333; border: 1px solid #ccc;}
         .btn-danger { background: #d93025; color: white; }
-        .btn-success { background: #1e8e3e; color: white; width: 100%; }
+        .btn-success { background: #1e8e3e; color: white; }
         .status { margin-top: 15px; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; }
+        
+        .history-card { border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fafafa; }
+        .feedback-box { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid #1a73e8; white-space: pre-wrap; }
+        .pending-box { background: #fff3e0; padding: 10px; border-radius: 8px; margin-top: 10px; color: #e65100; font-weight: bold; }
+        
+        .recorder-box, .upload-box { background: #f8f9fa; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; }
+        #loadingOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; font-size: 20px; font-weight: bold; color: #1a73e8;}
     </style>
 </head>
 <body>
+
+<div id="loadingOverlay" class="hidden">Loading your portal... Please wait.</div>
 
 <!-- 1. 登入畫面 -->
 <div id="loginCard" class="card">
@@ -42,78 +55,136 @@
         <label>PIN Code</label>
         <input type="password" id="loginPin" placeholder="Enter PIN">
     </div>
-    <button class="btn btn-primary" style="width: 100%;" onclick="login()">Login</button>
+    <button class="btn btn-primary" onclick="login()">Login</button>
     <div id="loginError" class="status hidden" style="background:#fce8e6; color:#c5221f;"></div>
 </div>
 
 <!-- 2. 主頁 Dashboard -->
 <div id="dashboardCard" class="card hidden">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 id="welcomeMsg">Welcome!</h2>
+        <h2 id="welcomeMsg" style="margin:0;">Welcome!</h2>
         <button onclick="logout()" style="border:none; background:none; color:#888; cursor:pointer;">Logout</button>
     </div>
 
     <div class="tabs">
-        <button id="tabWriting" class="tab-btn active" onclick="switchTab('Writing')">✍️ Writing</button>
-        <button id="tabSpeaking" class="tab-btn" onclick="switchTab('Speaking')">🗣️ Speaking</button>
+        <button id="tabNewTask" class="tab-btn active" onclick="switchMainTab('NewTask')">📝 Current Practice</button>
+        <button id="tabHistory" class="tab-btn" onclick="switchMainTab('History')">📚 My Records & Feedback</button>
     </div>
 
-    <form id="submissionForm">
-        <input type="hidden" id="currentModule" value="Writing">
-
-        <div class="form-group">
-            <label>Question / Topic Title</label>
-            <input type="text" id="taskQuestion" placeholder="e.g. Environmental Protection Essay / Speaking Prompt 1" required>
+    <!-- 區塊 A: 新題目與提交區 -->
+    <div id="sectionNewTask">
+        
+        <!-- 當沒有題目時顯示 -->
+        <div id="noTaskMsg" class="hidden" style="text-align:center; padding: 40px 20px;">
+            <h2 style="color:#666;">No practice available at the moment.</h2>
+            <p>Please wait for the teacher to publish a new task.</p>
         </div>
 
-        <!-- Writing 模式：作文輸入框 -->
-        <div id="writingGroup" class="form-group">
-            <label>Your Essay / Writing Response</label>
-            <textarea id="studentContent" rows="8" placeholder="Type or paste your essay here..."></textarea>
-        </div>
-
-        <!-- Speaking 模式：純錄音 (已刪除文字框) -->
-        <div id="speakingGroup" class="form-group hidden">
-            <label>Audio Recording (1-min Deliberation)</label>
-            <div class="recorder-box">
-                <p id="recordStatus">Click "Start Recording" to begin</p>
-                <button type="button" id="startRecBtn" class="btn btn-danger" onclick="startRecording()">🎙️ Start Recording</button>
-                <button type="button" id="stopRecBtn" class="btn btn-primary hidden" onclick="stopRecording()">⏹️ Stop</button>
-                <audio id="audioPreview" controls class="hidden" style="margin-top: 15px; width: 100%;"></audio>
+        <!-- 有題目時顯示表單 -->
+        <form id="submissionForm" class="hidden">
+            <div class="form-group">
+                <label>Current Task Topic</label>
+                <input type="text" id="taskQuestion" readonly style="background:#e8eaed; font-weight:bold;">
             </div>
-        </div>
 
-        <button type="submit" id="submitBtn" class="btn btn-success">Submit Practice</button>
-        <div id="submitStatus" class="status hidden"></div>
-    </form>
+            <div class="sub-tabs">
+                <button type="button" id="subTabWriting" class="active" onclick="switchModule('Writing')">✍️ Writing</button>
+                <button type="button" id="subTabSpeaking" onclick="switchModule('Speaking')">🗣️ Speaking</button>
+            </div>
+
+            <!-- Writing 模式 -->
+            <div id="writingGroup" class="form-group">
+                <div class="sub-tabs">
+                    <button type="button" id="modeTypeText" class="active" onclick="switchWriteMode('Text')">Type Answer</button>
+                    <button type="button" id="modeUploadImg" onclick="switchWriteMode('Image')">Upload Photo</button>
+                </div>
+                
+                <div id="writeTextSection">
+                    <textarea id="studentContent" rows="10" placeholder="Type your essay here..."></textarea>
+                    <button type="button" class="btn btn-secondary" onclick="saveDraft()" style="margin-top: 10px;">💾 Save Draft</button>
+                </div>
+
+                <div id="writeImageSection" class="hidden upload-box">
+                    <p>Upload a clear photo of your handwriting.</p>
+                    <input type="file" id="imageUpload" accept="image/*" onchange="handleImage(this)">
+                    <p id="imageStatus" style="color:green; font-weight:bold;"></p>
+                </div>
+            </div>
+
+            <!-- Speaking 模式 -->
+            <div id="speakingGroup" class="form-group hidden">
+                <div class="recorder-box">
+                    <p id="recordStatus">Click "Start Recording" to begin</p>
+                    <button type="button" id="startRecBtn" class="btn btn-danger" onclick="startRecording()">🎙️️ Start Recording</button>
+                    <button type="button" id="stopRecBtn" class="btn btn-primary hidden" onclick="stopRecording()">⏹️ Stop</button>
+                    <audio id="audioPreview" controls class="hidden" style="margin-top: 15px; width: 100%;"></audio>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="btn btn-success" style="margin-top:20px;">Submit Practice</button>
+            <div id="submitStatus" class="status hidden"></div>
+        </form>
+    </div>
+
+    <!-- 區塊 B: 歷史紀錄與老師評語 -->
+    <div id="sectionHistory" class="hidden">
+        <div id="historyContainer">
+            <!-- 歷史紀錄會透過 JavaScript 動態載入到這裡 -->
+        </div>
+    </div>
 </div>
 
 <script>
-    // 新增了 LKW 的帳戶資訊
     const STUDENT_DATA = {
-        "Esther": { pin: "98120000", email: "esther_email@example.com" }, // 可隨時更改 Esther 嘅真實電郵
-        "LKW": { pin: "56050000", email: "leungkw@ykh.hk" }
+        "Esther": { pin: "98120000" },
+        "LKW": { pin: "56050000" }
     };
 
-    // ⚠️ 記得將以下網址替換為你最新部署的 Google Apps Script Web App URL
+    // ⚠️ 貼上你剛才部署的最新 Web App URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhhoK9RAMxRV19v7gyZ9ZfcTxGE1s7MnXYFv8-lnAZO7f35dMflCWCHIwVHKRmDU_b/exec";
 
     let currentUser = null;
+    let currentModule = "Writing";
+    let writeMode = "Text";
+    
+    // 錄音變數
     let mediaRecorder = null;
     let audioChunks = [];
     let audioBase64 = null;
 
+    // 圖片變數
+    let imageBase64 = null;
+
+    // 1. 登入與資料拉取
     function login() {
         const name = document.getElementById('loginName').value;
         const pin = document.getElementById('loginPin').value;
         const errorDiv = document.getElementById('loginError');
 
         if (STUDENT_DATA[name] && STUDENT_DATA[name].pin === pin) {
-            currentUser = { name: name, email: STUDENT_DATA[name].email };
+            currentUser = { name: name };
             document.getElementById('loginCard').classList.add('hidden');
-            document.getElementById('dashboardCard').classList.remove('hidden');
-            document.getElementById('welcomeMsg').innerText = `Hi, ${name}!`;
             errorDiv.classList.add('hidden');
+            
+            // 顯示 Loading 畫面並呼叫 Google Apps Script 獲取資料
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            fetch(`${SCRIPT_URL}?student=${name}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    document.getElementById('dashboardCard').classList.remove('hidden');
+                    document.getElementById('welcomeMsg').innerText = `Hi, ${name}!`;
+                    
+                    setupDashboard(data);
+                    renderHistory(data.history);
+                    loadDraft(); // 載入草稿
+                })
+                .catch(err => {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    alert("Failed to load data. Please check your connection.");
+                    document.getElementById('loginCard').classList.remove('hidden');
+                });
         } else {
             errorDiv.innerText = "Invalid Name or PIN code.";
             errorDiv.classList.remove('hidden');
@@ -127,22 +198,123 @@
         document.getElementById('submissionForm').reset();
     }
 
-    function switchTab(moduleName) {
-        document.getElementById('currentModule').value = moduleName;
+    // 2. 初始化 Dashboard 介面 (根據有沒有題目)
+    function setupDashboard(data) {
+        if (!data.currentTask || data.currentTask.trim() === "") {
+            document.getElementById('noTaskMsg').classList.remove('hidden');
+            document.getElementById('submissionForm').classList.add('hidden');
+        } else {
+            document.getElementById('noTaskMsg').classList.add('hidden');
+            document.getElementById('submissionForm').classList.remove('hidden');
+            document.getElementById('taskQuestion').value = data.currentTask;
+        }
+    }
+
+    // 3. 渲染歷史紀錄
+    function renderHistory(historyArray) {
+        const container = document.getElementById('historyContainer');
+        container.innerHTML = ""; // 清空
         
-        if (moduleName === 'Writing') {
-            document.getElementById('tabWriting').classList.add('active');
-            document.getElementById('tabSpeaking').classList.remove('active');
+        if (historyArray.length === 0) {
+            container.innerHTML = "<p style='text-align:center; color:#888;'>No past submissions found.</p>";
+            return;
+        }
+
+        historyArray.forEach(record => {
+            let mediaHtml = "";
+            if(record.audioUrl !== "N/A" && record.audioUrl) mediaHtml += `<p>🎙️ Audio submitted.</p>`;
+            if(record.imageUrl !== "N/A" && record.imageUrl) mediaHtml += `<p>🖼️ Image submitted.</p>`;
+            if(record.content) mediaHtml += `<p style="white-space: pre-wrap; font-size: 14px; background: white; padding: 10px; border: 1px solid #eee;">${record.content}</p>`;
+
+            let feedbackHtml = "";
+            if (record.feedback.includes("Pending")) {
+                feedbackHtml = `<div class="pending-box">Pending teacher's feedback...</div>`;
+            } else {
+                feedbackHtml = `<div class="feedback-box"><strong>👩‍🏫 Teacher's Feedback & Transcription:</strong><br>${record.feedback}</div>`;
+            }
+
+            const cardHtml = `
+                <div class="history-card">
+                    <div style="font-size:12px; color:#666;">${record.timestamp} | ${record.module}</div>
+                    <div style="font-weight:bold; margin: 5px 0;">${record.question}</div>
+                    ${mediaHtml}
+                    ${feedbackHtml}
+                </div>
+            `;
+            container.innerHTML += cardHtml;
+        });
+    }
+
+    // --- 介面切換邏輯 ---
+    function switchMainTab(tab) {
+        if(tab === 'NewTask') {
+            document.getElementById('tabNewTask').classList.add('active');
+            document.getElementById('tabHistory').classList.remove('active');
+            document.getElementById('sectionNewTask').classList.remove('hidden');
+            document.getElementById('sectionHistory').classList.add('hidden');
+        } else {
+            document.getElementById('tabHistory').classList.add('active');
+            document.getElementById('tabNewTask').classList.remove('active');
+            document.getElementById('sectionHistory').classList.remove('hidden');
+            document.getElementById('sectionNewTask').classList.add('hidden');
+        }
+    }
+
+    function switchModule(module) {
+        currentModule = module;
+        if(module === 'Writing') {
+            document.getElementById('subTabWriting').classList.add('active');
+            document.getElementById('subTabSpeaking').classList.remove('active');
             document.getElementById('writingGroup').classList.remove('hidden');
             document.getElementById('speakingGroup').classList.add('hidden');
         } else {
-            document.getElementById('tabSpeaking').classList.add('active');
-            document.getElementById('tabWriting').classList.remove('active');
+            document.getElementById('subTabSpeaking').classList.add('active');
+            document.getElementById('subTabWriting').classList.remove('active');
             document.getElementById('speakingGroup').classList.remove('hidden');
             document.getElementById('writingGroup').classList.add('hidden');
         }
     }
 
+    function switchWriteMode(mode) {
+        writeMode = mode;
+        if(mode === 'Text') {
+            document.getElementById('modeTypeText').classList.add('active');
+            document.getElementById('modeUploadImg').classList.remove('active');
+            document.getElementById('writeTextSection').classList.remove('hidden');
+            document.getElementById('writeImageSection').classList.add('hidden');
+        } else {
+            document.getElementById('modeUploadImg').classList.add('active');
+            document.getElementById('modeTypeText').classList.remove('active');
+            document.getElementById('writeImageSection').classList.remove('hidden');
+            document.getElementById('writeTextSection').classList.add('hidden');
+        }
+    }
+
+    // --- 草稿功能 ---
+    function saveDraft() {
+        const text = document.getElementById('studentContent').value;
+        localStorage.setItem(`dse_draft_${currentUser.name}`, text);
+        alert("Draft saved! You can safely leave and come back later.");
+    }
+    function loadDraft() {
+        const draft = localStorage.getItem(`dse_draft_${currentUser.name}`);
+        if(draft) document.getElementById('studentContent').value = draft;
+    }
+
+    // --- 圖片處理 ---
+    function handleImage(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imageBase64 = e.target.result;
+                document.getElementById('imageStatus').innerText = "✅ Image loaded successfully.";
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // --- 錄音功能 ---
     async function startRecording() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -151,7 +323,7 @@
 
             mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
             mediaRecorder.onstop = () => {
-                const audioBlob =new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
+                const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
@@ -170,7 +342,6 @@
             alert("Please allow microphone access to record audio.");
         }
     }
-
     function stopRecording() {
         mediaRecorder.stop();
         document.getElementById('startRecBtn').classList.remove('hidden');
@@ -178,57 +349,79 @@
         document.getElementById('recordStatus').innerText = "✅ Recording finished. Listen below:";
     }
 
+    // --- 提交邏輯 ---
     document.getElementById('submissionForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const submitBtn = document.getElementById('submitBtn');
-        const statusDiv = document.getElementById('submitStatus');
-        const moduleName = document.getElementById('currentModule').value;
-
-        // 如果是 Speaking 但無錄音，阻擋提交
-        if (moduleName === 'Speaking' && !audioBase64) {
-            alert("請先完成錄音！");
+        
+        // 1. 防呆檢查
+        if (currentModule === 'Speaking' && !audioBase64) {
+            alert("Please complete your audio recording first!");
+            return;
+        }
+        if (currentModule === 'Writing' && writeMode === 'Image' && !imageBase64) {
+            alert("Please select a photo to upload!");
             return;
         }
 
+        // 2. 最終確認提示
+        const confirmMsg = "Please check your tenses, subject-verb agreement, and spelling. Once submitted, it cannot be changed.\n\nAre you sure you want to submit?";
+        if (!confirm(confirmMsg)) {
+            return; // 學生取消提交
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        const statusDiv = document.getElementById('submitStatus');
+
         submitBtn.disabled = true;
-        submitBtn.innerText = "Submitting & Sending Email...";
+        submitBtn.innerText = "Submitting... Please wait.";
         statusDiv.className = "status";
-        statusDiv.innerText = "Uploading your practice...";
+        statusDiv.innerText = "Uploading data... Do not close this page.";
         statusDiv.classList.remove('hidden');
 
+        // 整理傳送資料
         const payload = {
             studentName: currentUser.name,
-            studentEmail: currentUser.email,
-            module: moduleName,
+            module: currentModule,
             question: document.getElementById('taskQuestion').value,
-            studentContent: moduleName === 'Writing' ? document.getElementById('studentContent').value : "Audio submitted (No text notes)",
-            audioData: moduleName === 'Speaking' ? audioBase64 : null
+            studentContent: (currentModule === 'Writing' && writeMode === 'Text') ? document.getElementById('studentContent').value : "Answer submitted via media upload.",
+            audioData: currentModule === 'Speaking' ? audioBase64 : null,
+            imageData: (currentModule === 'Writing' && writeMode === 'Image') ? imageBase64 : null
         };
 
         fetch(SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'no-cors', // 因跨網域POST仍需保留
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
         .then(() => {
             statusDiv.style.background = "#e6f4ea";
             statusDiv.style.color = "#137333";
-            statusDiv.innerText = "✅ Submitted successfully! Teacher notified.";
+            statusDiv.innerText = "✅ Submitted successfully! Pending teacher's feedback.";
             
-            // 重置表單
-            document.getElementById('submissionForm').reset();
+            // 清空草稿與介面
+            localStorage.removeItem(`dse_draft_${currentUser.name}`);
+            document.getElementById('studentContent').value = "";
+            document.getElementById('imageUpload').value = "";
+            document.getElementById('imageStatus').innerText = "";
+            imageBase64 = null;
             audioBase64 = null;
             document.getElementById('audioPreview').classList.add('hidden');
             document.getElementById('recordStatus').innerText = 'Click "Start Recording" to begin';
             
             submitBtn.disabled = false;
             submitBtn.innerText = "Submit Practice";
+
+            // 提示學生去歷史紀錄看
+            setTimeout(() => {
+                alert("Submission sent! You can check your record in the 'My Records' tab. Please refresh the page later to see the teacher's feedback.");
+                location.reload(); // 重新載入以更新歷史紀錄
+            }, 1500);
         })
         .catch(err => {
             statusDiv.style.background = "#fce8e6";
             statusDiv.style.color = "#c5221f";
-            statusDiv.innerText = "❌ Submission failed. Please try again.";
+            statusDiv.innerText = "❌ Submission failed. Please check connection.";
             submitBtn.disabled = false;
             submitBtn.innerText = "Submit Practice";
         });
