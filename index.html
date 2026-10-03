@@ -391,7 +391,7 @@
         fetch(SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors', // 因跨網域POST仍需保留
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(payload)
         })
         .then(() => {
