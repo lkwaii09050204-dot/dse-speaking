@@ -3,38 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSE English Learning Portal</title>
+    <title>DSE English Practice Portal</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .card { max-width: 680px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .card { max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2 { color: #1a73e8; margin-top: 0; }
         .hidden { display: none; }
         .form-group { margin-bottom: 18px; }
         label { display: block; font-weight: 600; margin-bottom: 6px; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         
-        /* Tab Navigation */
+        /* 模組切換頁籤 (只留 Writing & Speaking) */
         .tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; color: #666; font-size: 15px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; color: #666; font-size: 16px; }
         .tab-btn.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
 
-        /* Task Notice Box (動態題目顯示框) */
-        .task-box { background-color: #e8f0fe; border-left: 5px solid #1a73e8; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-
-        /* Audio Recorder UI */
+        /* 錄音區介面 */
         .recorder-box { background: #f8f9fa; border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; font-size: 15px; }
         .btn-primary { background: #1a73e8; color: white; }
         .btn-danger { background: #d93025; color: white; }
-        .btn-success { background: #1e8e3e; color: white; }
-        .status { margin-top: 15px; padding: 10px; border-radius: 6px; text-align: center; }
+        .btn-success { background: #1e8e3e; color: white; width: 100%; }
+        .status { margin-top: 15px; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <!-- 1. 登入畫面 -->
 <div id="loginCard" class="card">
-    <h2>DSE Student Portal Login</h2>
+    <h2>DSE Portal Login</h2>
     <div class="form-group">
         <label>Student Name</label>
         <select id="loginName">
@@ -57,35 +54,28 @@
         <button onclick="logout()" style="border:none; background:none; color:#888; cursor:pointer;">Logout</button>
     </div>
 
-    <!-- 模組分頁切換 -->
+    <!-- 只保留 Writing & Speaking 兩個 Tab -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('reading')">📖 Reading</button>
-        <button class="tab-btn" onclick="switchTab('writing')">✍️ Writing</button>
-        <button class="tab-btn" onclick="switchTab('speaking')">🗣️ Speaking</button>
-    </div>
-
-    <!-- 📌 動態題目公告欄 (自動從 Google Sheet 抓取顯示) -->
-    <div id="taskNoticeBox" class="task-box hidden">
-        <h3 id="taskTitle" style="margin-top:0; color:#1a73e8;"></h3>
-        <p id="taskDetail" style="margin-bottom:0; color:#333; white-space: pre-line; font-size:15px;"></p>
+        <button id="tabWriting" class="tab-btn active" onclick="switchTab('Writing')">✍️ Writing</button>
+        <button id="tabSpeaking" class="tab-btn" onclick="switchTab('Speaking')">🗣️ Speaking</button>
     </div>
 
     <form id="submissionForm">
-        <input type="hidden" id="currentModule" value="Reading">
+        <input type="hidden" id="currentModule" value="Writing">
 
         <div class="form-group">
-            <label>Question / Task Topic</label>
-            <input type="text" id="taskQuestion" placeholder="e.g. Reading Passage 1 / Speaking Topic" required>
+            <label>Question / Topic Title</label>
+            <input type="text" id="taskQuestion" placeholder="e.g. Environmental Protection Essay / Speaking Prompt 1" required>
         </div>
 
-        <!-- Reading / Writing 模組文字欄位 -->
-        <div id="textModuleGroup" class="form-group">
-            <label id="contentLabel">Your Answers / Essay</label>
-            <textarea id="studentContent" rows="6" placeholder="Type or paste your response here..."></textarea>
+        <!-- Writing 模式：作文輸入框 -->
+        <div id="writingGroup" class="form-group">
+            <label>Your Essay / Writing Response</label>
+            <textarea id="studentContent" rows="8" placeholder="Type or paste your essay here..."></textarea>
         </div>
 
-        <!-- Speaking 模組錄音介面 -->
-        <div id="speakingModuleGroup" class="form-group hidden">
+        <!-- Speaking 模式：錄音介面 -->
+        <div id="speakingGroup" class="form-group hidden">
             <label>Audio Recording (1-min Deliberation)</label>
             <div class="recorder-box">
                 <p id="recordStatus">Click "Start Recording" to begin</p>
@@ -93,26 +83,27 @@
                 <button type="button" id="stopRecBtn" class="btn btn-primary hidden" onclick="stopRecording()">⏹️ Stop</button>
                 <audio id="audioPreview" controls class="hidden" style="margin-top: 15px; width: 100%;"></audio>
             </div>
+            <label>Notes / Speech Draft (Optional)</label>
+            <textarea id="speakingNotes" rows="3" placeholder="Optional: Paste your response draft or notes here..."></textarea>
         </div>
 
-        <button type="submit" id="submitBtn" class="btn btn-success" style="width: 100%; font-size: 16px;">Submit Assignment</button>
+        <button type="submit" id="submitBtn" class="btn btn-success">Submit Practice</button>
         <div id="submitStatus" class="status hidden"></div>
     </form>
 </div>
 
 <script>
     const STUDENT_DATA = {
-        "Esther": { pin: "98120000", email: "esther_email@example.com" }
+        "Esther": { pin: "98120000", email: "esther_email@example.com" } // 可替換為 Esther 的 Email
     };
 
-    // ⚠️ 請替換為你的 Apps Script 網址
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDaX3EdSWuQf13LneBTNPIq37zUsqkknRDBr8zXYuuKN4Bu_ZaqgPJhfRD_9azn-7R/exec";
+    // ⚠️ 替換為你的 Google Apps Script Web App 網址
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyaELDzORBF4iSxhQe6w-W7v2YNt0_wGd4aWwKgXctx6DdKsRcSiFpvENVcL5417CUr/exec";
 
     let currentUser = null;
     let mediaRecorder = null;
     let audioChunks = [];
     let audioBase64 = null;
-    let activeTasks = {};
 
     function login() {
         const name = document.getElementById('loginName').value;
@@ -125,9 +116,6 @@
             document.getElementById('dashboardCard').classList.remove('hidden');
             document.getElementById('welcomeMsg').innerText = `Hi, ${name}!`;
             errorDiv.classList.add('hidden');
-
-            // 登入後即時向 Google Sheet 抓取題目
-            fetchTasks();
         } else {
             errorDiv.innerText = "Invalid Name or PIN code.";
             errorDiv.classList.remove('hidden');
@@ -140,88 +128,57 @@
         document.getElementById('loginCard').classList.remove('hidden');
     }
 
-    // 向 Apps Script 讀取 Tasks 資料
-    function fetchTasks() {
-        fetch(SCRIPT_URL)
-            .then(res => res.json())
-            .then(data => {
-                if (data.tasks) {
-                    activeTasks = data.tasks;
-                    updateTaskDisplay("Reading"); // 預設顯示 Reading 題目
-                }
-            })
-            .catch(err => console.error("Error fetching tasks:", err));
-    }
-
-    // 根據選擇的分頁更新題目藍框內容
-    function updateTaskDisplay(module) {
-        const box = document.getElementById('taskNoticeBox');
-        const title = document.getElementById('taskTitle');
-        const detail = document.getElementById('taskDetail');
-        
-        if (activeTasks[module]) {
-            title.innerText = "📌 Current Task: " + activeTasks[module].title;
-            detail.innerText = activeTasks[module].detail;
-            box.classList.remove('hidden');
-            
-            // 自動填入 Question 欄位
-            document.getElementById('taskQuestion').value = activeTasks[module].title;
-        } else {
-            box.classList.add('hidden');
-            document.getElementById('taskQuestion').value = "";
-        }
-    }
-
+    // 切換 Writing 與 Speaking
     function switchTab(moduleName) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-
-        const formattedModule = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
-        document.getElementById('currentModule').value = formattedModule;
+        document.getElementById('currentModule').value = moduleName;
         
-        if (moduleName === 'speaking') {
-            document.getElementById('textModuleGroup').classList.add('hidden');
-            document.getElementById('speakingModuleGroup').classList.remove('hidden');
+        if (moduleName === 'Writing') {
+            document.getElementById('tabWriting').classList.add('active');
+            document.getElementById('tabSpeaking').classList.remove('active');
+            document.getElementById('writingGroup').classList.remove('hidden');
+            document.getElementById('speakingGroup').classList.add('hidden');
         } else {
-            document.getElementById('textModuleGroup').classList.remove('hidden');
-            document.getElementById('speakingModuleGroup').classList.add('hidden');
-            document.getElementById('contentLabel').innerText = moduleName === 'reading' ? "Your Reading Answers" : "Your Essay";
+            document.getElementById('tabSpeaking').classList.add('active');
+            document.getElementById('tabWriting').classList.remove('active');
+            document.getElementById('speakingGroup').classList.remove('hidden');
+            document.getElementById('writingGroup').classList.add('hidden');
         }
-
-        // 切換分頁時，同步更新題目顯示
-        updateTaskDisplay(formattedModule);
     }
 
-    // 🎙️ 錄音功能
+    // 🎙️ 錄音控制
     async function startRecording() {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
 
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-            reader.onloadend = () => {
-                audioBase64 = reader.result;
-                const audioPreview = document.getElementById('audioPreview');
-                audioPreview.src = URL.createObjectURL(audioBlob);
-                audioPreview.classList.remove('hidden');
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    audioBase64 = reader.result;
+                    const audioPreview = document.getElementById('audioPreview');
+                    audioPreview.src = URL.createObjectURL(audioBlob);
+                    audioPreview.classList.remove('hidden');
+                };
             };
-        };
 
-        mediaRecorder.start();
-        document.getElementById('startRecBtn').classList.add('hidden');
-        document.getElementById('stopRecBtn').classList.remove('hidden');
-        document.getElementById('recordStatus').innerText = "🎙️️ Recording in progress...";
+            mediaRecorder.start();
+            document.getElementById('startRecBtn').classList.add('hidden');
+            document.getElementById('stopRecBtn').classList.remove('hidden');
+            document.getElementById('recordStatus').innerText = "🎙️ Recording in progress...";
+        } catch (err) {
+            alert("Please allow microphone access to record audio.");
+        }
     }
 
     function stopRecording() {
         mediaRecorder.stop();
         document.getElementById('startRecBtn').classList.remove('hidden');
         document.getElementById('stopRecBtn').classList.add('hidden');
-        document.getElementById('recordStatus').innerText = "✅ Recording complete. Listen below:";
+        document.getElementById('recordStatus').innerText = "✅ Recording finished. Listen below:";
     }
 
     // 表單提交
@@ -229,20 +186,22 @@
         e.preventDefault();
         const submitBtn = document.getElementById('submitBtn');
         const statusDiv = document.getElementById('submitStatus');
+        const moduleName = document.getElementById('currentModule').value;
 
         submitBtn.disabled = true;
-        submitBtn.innerText = "Uploading & Sending Email...";
+        submitBtn.innerText = "Submitting...";
         statusDiv.className = "status";
-        statusDiv.innerText = "Submitting...";
+        statusDiv.innerText = "Uploading your practice...";
         statusDiv.classList.remove('hidden');
 
+        // 整理提交數據
         const payload = {
             studentName: currentUser.name,
             studentEmail: currentUser.email,
-            module: document.getElementById('currentModule').value,
+            module: moduleName,
             question: document.getElementById('taskQuestion').value,
-            studentContent: document.getElementById('studentContent').value,
-            audioData: audioBase64
+            studentContent: moduleName === 'Writing' ? document.getElementById('studentContent').value : document.getElementById('speakingNotes').value,
+            audioData: moduleName === 'Speaking' ? audioBase64 : null
         };
 
         fetch(SCRIPT_URL, {
@@ -254,18 +213,20 @@
         .then(() => {
             statusDiv.style.background = "#e6f4ea";
             statusDiv.style.color = "#137333";
-            statusDiv.innerText = "✅ Submitted successfully! Teacher notified via email.";
+            statusDiv.innerText = "✅ Submitted successfully! Teacher notified.";
             document.getElementById('submissionForm').reset();
             audioBase64 = null;
             document.getElementById('audioPreview').classList.add('hidden');
+            document.getElementById('recordStatus').innerText = 'Click "Start Recording" to begin';
             submitBtn.disabled = false;
-            submitBtn.innerText = "Submit Assignment";
+            submitBtn.innerText = "Submit Practice";
         })
         .catch(err => {
             statusDiv.style.background = "#fce8e6";
             statusDiv.style.color = "#c5221f";
-            statusDiv.innerText = "❌ Error submitting. Please try again.";
+            statusDiv.innerText = "❌ Submission failed. Please try again.";
             submitBtn.disabled = false;
+            submitBtn.innerText = "Submit Practice";
         });
     });
 </script>
