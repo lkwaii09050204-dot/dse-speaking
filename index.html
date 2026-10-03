@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSE Speaking Practice Portal</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 650px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        h2 {
+            margin-top: 0;
+            color: #1a73e8;
+            border-bottom: 2px solid #e8f0fe;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #444;
+        }
+        input[type="text"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            width: 100%;
+            background-color: #1a73e8;
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #1557b0;
+        }
+        .status-msg {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            display: none;
+            font-weight: 500;
+            text-align: center;
+        }
+        .success { background-color: #e6f4ea; color: #137333; }
+        .error { background-color: #fce8e6; color: #c5221f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>DSE Speaking Submission Portal</h2>
+    <form id="submissionForm">
+        
+        <div class="form-group">
+            <label for="studentName">Student Name</label>
+            <select id="studentName" required>
+                <option value="">-- Select Your Name --</option>
+                <option value="Esther">Esther</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="pin">PIN Code</label>
+            <input type="password" id="pin" placeholder="Enter your 8-digit PIN" required>
+        </div>
+
+        <div class="form-group">
+            <label for="question">Exam Question / Topic</label>
+            <input type="text" id="question" placeholder="e.g. Should the government ban plastic tableware?" required>
+        </div>
+
+        <div class="form-group">
+            <label for="studentResponse">Your Initial Response (1-min Deliberation)</label>
+            <textarea id="studentResponse" placeholder="Paste or type your spoken response here..." required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="geminiFeedback">Gemini's Feedback & Suggestions</label>
+            <textarea id="geminiFeedback" placeholder="Paste Gemini's advice and model rewrite here..." required></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn">Submit Practice Record</button>
+        <div id="statusMsg" class="status-msg"></div>
+    </form>
+</div>
+
+<script>
+    // 學生 PIN 碼設定 (硬編碼驗證)
+    const STUDENT_PINS = {
+        "Esther": "98120000"
+    };
+
+    // ⚠️ 替換為你在第一步獲得的 Google Apps Script 網址
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDaX3EdSWuQf13LneBTNPIq37zUsqkknRDBr8zXYuuKN4Bu_ZaqgPJhfRD_9azn-7R/exec";
+
+    document.getElementById('submissionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('studentName').value;
+        const pin = document.getElementById('pin').value;
+        const question = document.getElementById('question').value;
+        const studentResponse = document.getElementById('studentResponse').value;
+        const geminiFeedback = document.getElementById('geminiFeedback').value;
+        const statusMsg = document.getElementById('statusMsg');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // PIN 碼驗證
+        if (STUDENT_PINS[name] !== pin) {
+            showStatus("Invalid PIN code. Please check again.", "error");
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Submitting...";
+        showStatus("Uploading your practice...", "success");
+
+        const payload = {
+            studentName: name,
+            question: question,
+            studentResponse: studentResponse,
+            geminiFeedback: geminiFeedback
+        };
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // 避開跨域限制直接發送
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            showStatus("Submitted successfully! Your teacher will review it soon.", "success");
+            document.getElementById('submissionForm').reset();
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit Practice Record";
+        })
+        .catch(error => {
+            showStatus("Submission failed. Please try again.", "error");
+            console.error('Error:', error);
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit Practice Record";
+        });
+    });
+
+    function showStatus(msg, type) {
+        const statusMsg = document.getElementById('statusMsg');
+        statusMsg.innerText = msg;
+        statusMsg.className = `status-msg ${type}`;
+        statusMsg.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
+
